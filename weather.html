@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather Forecast</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e0e0e0;
+      padding: 1rem;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 1.5rem; }
+    .header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: 0.05em; opacity: 0.85; }
+    .location-name { font-size: 1.1rem; opacity: 0.6; margin-top: 0.25rem; min-height: 1.5em; }
+
+    /* ── Current weather ── */
+    .current {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .current-left .temp {
+      font-size: 4rem;
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(135deg, #fff 40%, #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .current-left .desc { font-size: 1rem; opacity: 0.7; margin-top: 0.4rem; text-transform: capitalize; }
+    .current-right { text-align: right; font-size: 0.85rem; opacity: 0.65; line-height: 2; }
+
+    /* ── 7-day forecast ── */
+    .forecast-title { font-size: 0.78rem; letter-spacing: 0.12em; opacity: 0.5; text-transform: uppercase; margin-bottom: 0.75rem; }
+    .forecast-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+    }
+    .day-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 0.6rem 0.25rem;
+      text-align: center;
+      font-size: 0.78rem;
+    }
+    .day-card .day-label { font-weight: 600; opacity: 0.7; margin-bottom: 0.4rem; }
+    .day-card .day-icon { font-size: 1.4rem; margin-bottom: 0.4rem; }
+    .day-card .day-hi { font-weight: 700; }
+    .day-card .day-lo { opacity: 0.55; font-size: 0.72rem; }
+
+    /* ── Hourly strip ── */
+    .hourly-title { font-size: 0.78rem; letter-spacing: 0.12em; opacity: 0.5; text-transform: uppercase; margin: 1.25rem 0 0.75rem; }
+    .hourly-strip {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+      scrollbar-width: none;
+    }
+    .hourly-strip::-webkit-scrollbar { display: none; }
+    .hour-card {
+      flex: 0 0 auto;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 0.5rem 0.6rem;
+      text-align: center;
+      font-size: 0.75rem;
+      min-width: 52px;
+    }
+    .hour-card .h-time { opacity: 0.55; margin-bottom: 0.3rem; }
+    .hour-card .h-icon { font-size: 1.1rem; margin-bottom: 0.3rem; }
+    .hour-card .h-temp { font-weight: 600; }
+
+    /* ── States ── */
+    #status {
+      text-align: center;
+      padding: 2rem 0;
+      opacity: 0.65;
+      font-size: 0.95rem;
+      line-height: 1.8;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: #93c5fd;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .retry-btn {
+      margin-top: 1rem;
+      padding: 0.5rem 1.5rem;
+      background: rgba(147,197,253,0.2);
+      border: 1px solid rgba(147,197,253,0.4);
+      border-radius: 8px;
+      color: #93c5fd;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .retry-btn:hover { background: rgba(147,197,253,0.3); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>Weather Forecast</h1>
+    <div class="location-name" id="location-name"></div>
+  </div>
+
+  <div id="status">
+    <div class="spinner"></div>
+    Detecting your location…
+  </div>
+
+  <div id="weather-content" class="hidden">
+    <!-- Current conditions -->
+    <div class="current">
+      <div class="current-left">
+        <div class="temp" id="cur-temp">--</div>
+        <div class="desc" id="cur-desc">--</div>
+      </div>
+      <div class="current-right" id="cur-meta"></div>
+    </div>
+
+    <!-- 7-day forecast -->
+    <div class="forecast-title">7-Day Forecast</div>
+    <div class="forecast-grid" id="forecast-grid"></div>
+
+    <!-- Hourly -->
+    <div class="hourly-title">Next 24 Hours</div>
+    <div class="hourly-strip" id="hourly-strip"></div>
+  </div>
+</div>
+
+<script>
+  /* ── WMO weather code → description + emoji ── */
+  const WMO = {
+    0:  ['Clear sky',         '☀️'],
+    1:  ['Mainly clear',      '🌤️'],
+    2:  ['Partly cloudy',     '⛅'],
+    3:  ['Overcast',          '☁️'],
+    45: ['Foggy',             '🌫️'],
+    48: ['Icy fog',           '🌫️'],
+    51: ['Light drizzle',     '🌦️'],
+    53: ['Drizzle',           '🌦️'],
+    55: ['Heavy drizzle',     '🌧️'],
+    61: ['Light rain',        '🌧️'],
+    63: ['Rain',              '🌧️'],
+    65: ['Heavy rain',        '🌧️'],
+    71: ['Light snow',        '🌨️'],
+    73: ['Snow',              '❄️'],
+    75: ['Heavy snow',        '❄️'],
+    77: ['Snow grains',       '🌨️'],
+    80: ['Rain showers',      '🌦️'],
+    81: ['Rain showers',      '🌧️'],
+    82: ['Violent showers',   '⛈️'],
+    85: ['Snow showers',      '🌨️'],
+    86: ['Heavy snow showers','❄️'],
+    95: ['Thunderstorm',      '⛈️'],
+    96: ['Thunderstorm + hail','⛈️'],
+    99: ['Thunderstorm + hail','⛈️'],
+  };
+
+  function wmo(code) {
+    return WMO[code] ?? ['Unknown', '🌡️'];
+  }
+
+  function dayName(dateStr, short = true) {
+    const d = new Date(dateStr + 'T12:00:00');
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    return d.toLocaleDateString('en-US', { weekday: short ? 'short' : 'long' });
+  }
+
+  function fmt12h(isoHour) {
+    const d = new Date(isoHour);
+    let h = d.getHours();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${h}${ampm}`;
+  }
+
+  function setStatus(html, isError = false) {
+    const el = document.getElementById('status');
+    el.innerHTML = html;
+    el.classList.remove('hidden');
+    document.getElementById('weather-content').classList.add('hidden');
+  }
+
+  function showWeather() {
+    document.getElementById('status').classList.add('hidden');
+    document.getElementById('weather-content').classList.remove('hidden');
+  }
+
+  /* ── Reverse-geocode lat/lon → city name (Nominatim) ── */
+  async function reverseGeocode(lat, lon) {
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      const j = await r.json();
+      const a = j.address ?? {};
+      return a.city || a.town || a.village || a.county || a.state || 'Your location';
+    } catch {
+      return 'Your location';
+    }
+  }
+
+  /* ── Fetch Open-Meteo data ── */
+  async function fetchWeather(lat, lon) {
+    const params = new URLSearchParams({
+      latitude: lat,
+      longitude: lon,
+      current: [
+        'temperature_2m','apparent_temperature','relative_humidity_2m',
+        'wind_speed_10m','wind_direction_10m','precipitation','weathercode'
+      ].join(','),
+      hourly: ['temperature_2m','weathercode'].join(','),
+      daily: [
+        'weathercode','temperature_2m_max','temperature_2m_min',
+        'precipitation_sum','sunrise','sunset'
+      ].join(','),
+      temperature_unit: 'fahrenheit',
+      wind_speed_unit: 'mph',
+      precipitation_unit: 'inch',
+      timezone: 'auto',
+      forecast_days: 7,
+    });
+
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+    if (!res.ok) throw new Error('Weather API error');
+    return res.json();
+  }
+
+  /* ── Wind direction arrow ── */
+  function windDir(deg) {
+    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    return dirs[Math.round(deg / 45) % 8];
+  }
+
+  /* ── Render ── */
+  function render(data, cityName) {
+    document.getElementById('location-name').textContent = cityName;
+
+    // Current
+    const c = data.current;
+    const [desc, icon] = wmo(c.weathercode);
+    document.getElementById('cur-temp').textContent = `${Math.round(c.temperature_2m)}°F`;
+    document.getElementById('cur-desc').textContent = `${icon} ${desc}`;
+    document.getElementById('cur-meta').innerHTML = `
+      Feels like ${Math.round(c.apparent_temperature)}°F<br>
+      Humidity ${c.relative_humidity_2m}%<br>
+      Wind ${Math.round(c.wind_speed_10m)} mph ${windDir(c.wind_direction_10m)}<br>
+      Precip ${c.precipitation.toFixed(2)} in
+    `;
+
+    // 7-day
+    const fg = document.getElementById('forecast-grid');
+    fg.innerHTML = '';
+    data.daily.time.forEach((date, i) => {
+      const [, di] = wmo(data.daily.weathercode[i]);
+      const hi = Math.round(data.daily.temperature_2m_max[i]);
+      const lo = Math.round(data.daily.temperature_2m_min[i]);
+      fg.insertAdjacentHTML('beforeend', `
+        <div class="day-card">
+          <div class="day-label">${dayName(date)}</div>
+          <div class="day-icon">${di}</div>
+          <div class="day-hi">${hi}°</div>
+          <div class="day-lo">${lo}°</div>
+        </div>
+      `);
+    });
+
+    // Hourly (next 24 slots from current hour)
+    const hs = document.getElementById('hourly-strip');
+    hs.innerHTML = '';
+    const nowHour = new Date().getHours();
+    const times = data.hourly.time;
+    let count = 0;
+    for (let i = 0; i < times.length && count < 24; i++) {
+      const t = new Date(times[i]);
+      if (t < new Date(Date.now() - 30 * 60 * 1000)) continue;
+      const [, hi] = wmo(data.hourly.weathercode[i]);
+      const ht = Math.round(data.hourly.temperature_2m[i]);
+      hs.insertAdjacentHTML('beforeend', `
+        <div class="hour-card">
+          <div class="h-time">${fmt12h(times[i])}</div>
+          <div class="h-icon">${hi}</div>
+          <div class="h-temp">${ht}°</div>
+        </div>
+      `);
+      count++;
+    }
+
+    showWeather();
+  }
+
+  /* ── Entry point ── */
+  async function init() {
+    if (!navigator.geolocation) {
+      setStatus('<div class="error-icon">📍</div>Geolocation is not supported by your browser.', true);
+      return;
+    }
+
+    setStatus('<div class="spinner"></div>Detecting your location…');
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const { latitude: lat, longitude: lon } = coords;
+        try {
+          setStatus('<div class="spinner"></div>Fetching weather data…');
+          const [data, city] = await Promise.all([
+            fetchWeather(lat, lon),
+            reverseGeocode(lat, lon),
+          ]);
+          render(data, city);
+        } catch (err) {
+          setStatus(`
+            <div class="error-icon">⚠️</div>
+            Failed to load weather data.<br>
+            <small>${err.message}</small><br>
+            <button class="retry-btn" onclick="init()">Try again</button>
+          `, true);
+        }
+      },
+      (err) => {
+        const msg = err.code === 1
+          ? 'Location access was denied.<br>Please allow location access and try again.'
+          : 'Unable to determine your location.';
+        setStatus(`
+          <div class="error-icon">📍</div>
+          ${msg}<br>
+          <button class="retry-btn" onclick="init()">Try again</button>
+        `, true);
+      },
+      { timeout: 10000, maximumAge: 60000 }
+    );
+  }
+
+  init();
+</script>
+</body>
+</html>
