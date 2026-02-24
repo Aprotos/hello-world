@@ -68,7 +68,7 @@ export default function Orders() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Total', count: orders.length, amount: totalRevenue, color: 'blue' },
           { label: 'Paid', count: orders.filter(o => o.status === 'Paid').length, amount: orders.filter(o => o.status === 'Paid').reduce((s, o) => s + o.total, 0), color: 'emerald' },
