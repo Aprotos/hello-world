@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
+import path from 'path';
 
 import dashboardRouter from './routes/dashboard';
 import routesRouter from './routes/routes';
@@ -34,8 +35,11 @@ app.use('/api/drivers', driversRouter);
 app.use('/api/deliveries', deliveriesRouter);
 app.use('/api/reports', reportsRouter);
 
-app.use((_req, res) => {
-  res.status(404).json({ error: 'Not found' });
+// Serve frontend static files if built
+const distPath = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(distPath));
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 export default app;
